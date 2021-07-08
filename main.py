@@ -33,20 +33,20 @@ def build_transformation_matrix(transform):
   return transform_matrix
 
 def estimate_partial_transform(matched_keypoints):
-	prev_matched_kp, cur_matched_kp = matched_keypoints
-	transform = cv2.estimateAffinePartial2D(np.array(prev_matched_kp), np.array(cur_matched_kp))[0]
+    prev_matched_kp, cur_matched_kp = matched_keypoints
+    transform = cv2.estimateAffinePartial2D(np.array(prev_matched_kp), np.array(cur_matched_kp))[0]
+    
+    if transform is not None:
+        # translation x
+        dx = transform[0, 2]
+        # translation y
+        dy = transform[1, 2]
+        # rotation
+        da = np.arctan2(transform[1, 0], transform[0, 0])
+    else:
+        dx = dy = da = 0
 
-	if transform is not None:
-	    # translation x
-	    dx = transform[0, 2]
-	    # translation y
-	    dy = transform[1, 2]
-	    # rotation
-	    da = np.arctan2(transform[1, 0], transform[0, 0])
-	else:
-	    dx = dy = da = 0
-	
-	return [dx, dy, da]
+    return [dx, dy, da]
 
 def update_transformation_matrix(M, m):
 	M_ = np.concatenate([M, np.zeros([1,3])], axis=0)
@@ -223,6 +223,7 @@ if __name__ == '__main__':
 	mask = sb.get_mask(frame)
 	frame = convertColor(frame)
 	mask = convertColor(mask)
+        print(mask)
 	temp = sb.skyblend(frame, frame, mask)
 	cv2.imshow('mask', mask)
 	cv2.waitKey(0)
