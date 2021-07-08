@@ -1,0 +1,7 @@
+{
+  "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2"],
+  "python.linting.pylintArgs": [
+        "--disable=E1101",
+        "--disable=W,C"
+   ]
+}
