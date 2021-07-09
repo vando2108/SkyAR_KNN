@@ -56,11 +56,13 @@ class SkyBox():
         self.relighting_factor = 0.8
         self.recoloring_factor = 0.5
         self.halo_effect = True
+
+        self.video_writer = cv2.VideoWriter('demo.avi', cv2.VideoWriter_fourcc(*'MJPG'), 20.0, (640, 360))
+        self.video_writer_cat = cv2.VideoWriter('demo-cat.avi', cv2.VideoWriter_fourcc(*'MJPG'), 20.0, (640, 360))
     
     def load_skybox(self):
-        skybox_img = cv2.imread('data/background.jpg', cv2.IMREAD_COLOR)
+        skybox_img = cv2.imread('data/background6.jpg', cv2.IMREAD_COLOR)
         skybox_img = cv2.cvtColor(skybox_img, cv2.COLOR_BGR2RGB)
-        skybox_img = cv2.resize(skybox_img, (640, 360))
         skybox_center_crop = 0.5
         cc = 1. / skybox_center_crop
         imgtile = cv2.resize(skybox_img, (int(cc * 640), int(cc * 360)))
@@ -199,8 +201,7 @@ class SkyBox():
     
     def write_video(self, img_HD, syneth):
         frame = np.array(255.0 * syneth[:, :, ::-1], dtype=np.uint8)
-        frame_cat = np.concatenate([img_HD, syneth], axis=1)
-        frame_cat = np.array(255.0 * frame_cat[:, :, ::-1], dtype=np.uint8)
+        self.video_writer.write(frame)
 
     def convertColor(self, imgHD):
         imgHD = cv2.cvtColor(imgHD, cv2.COLOR_BGR2RGB)
@@ -208,12 +209,15 @@ class SkyBox():
         return imgHD
 
     def run_video(self):
-        cap = cv2.VideoCapture('data/output.mp4')
-        m_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap = cv2.VideoCapture('data/input1.mp4')
+        cap_mask = cv2.VideoCapture('data/output1_mask.mp4')
+        m_frames = int(cap_mask.get(cv2.CAP_PROP_FRAME_COUNT))
         img_HD_prev = None
 
         for idx in range(m_frames):
-            ret, frame = cap.read()
+            ret, skymask = cap_mask.read()
+            _, frame = cap.read()
+            frame = cv2.resize(frame, (640, 360))
 
             if ret:
                 img_HD = self.convertColor(frame)
@@ -221,36 +225,20 @@ class SkyBox():
                 if img_HD_prev is None:
                     img_HD_prev = img_HD
                 
-                skymask = self.get_mask(frame)
                 skymask = self.convertColor(skymask)
+                skymask[skymask > 0.95] = 1
+                skymask[skymask < 0.05] = 0
                 syneth = self.skyblend(img_HD, img_HD_prev, skymask)
-                skymask = np.array(255.0 * skymask[:, :, ::-1], dtype=np.uint8)
-                syneth = np.array(255.0 * syneth[:, :, ::-1], dtype=np.uint8)
-                cv2.imshow('frame', frame)
-                cv2.imshow('skymask', skymask)
-                cv2.imshow('syneth', syneth)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                break
+                self.write_video(frame, syneth)
+
+                if (idx + 1) % 50 == 0:
+                    print(f'processing video, frame {idx + 1} / {m_frames} ... ')
 
                 img_HD_prev = img_HD
+            else:
+                break
 
 
 if __name__ == '__main__':
     sb = SkyBox()
-    cap = cv2.VideoCapture('data/output.mp4') 
-    ret, frame = cap.read()
-    cnt = 0
-    for it in frame:
-        for v in it:
-            if v[0] == 19 and v[1] == 254 and v[2] == 0:
-                v[0] = 0
-                v[1] = 0
-                v[2] = 0
-            else:
-                v[0] = 255
-                v[1] = 255
-                v[2] = 255
-    cv2.imshow('frame', frame)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    sb.run_video()
